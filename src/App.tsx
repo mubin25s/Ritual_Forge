@@ -1,33 +1,42 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Flame,
-  Trophy,
-  CheckCircle2,
-  Plus,
-  CalendarDays,
-  Target,
-  ListTodo,
   Trash2,
-  Briefcase,
+  Zap,
+  Wind,
+  Archive,
+  Hexagon,
+  Circle,
+  Square,
+  Shield,
+  Target,
+  Activity,
   HeartPulse,
   BookOpen,
-  User,
-  Quote,
-  Sparkles
+  Compass,
+  Mic,
+  Settings,
+  Globe,
+  Plus,
+  ArrowRight,
+  Clock,
+  Play,
+  RotateCcw
 } from 'lucide-react';
 import { format, subDays, eachDayOfInterval, startOfWeek, subWeeks, parseISO } from 'date-fns';
-
-type Duration = '1_day' | '3_days' | '7_days' | '1_month' | '1_year' | 'unlimited';
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'once';
 type Category = 'health' | 'work' | 'personal' | 'study';
+type Priority = 'low' | 'medium' | 'high';
 
 interface Habit {
   id: string;
   title: string;
-  duration: Duration;
   frequency: Frequency;
   category: Category;
+  priority: Priority;
   createdAt: string; // ISO DateTime
+  scheduledDays?: number[]; // 0-6
+  scheduledMonthDay?: number; // 1-31
+  time?: string; // HH:mm format
 }
 
 type ActivityData = Record<string, string[]>; // 'YYYY-MM-DD' => array of habit IDs completed
@@ -38,9 +47,18 @@ function App() {
 
   // New habit form state
   const [title, setTitle] = useState('');
-  const [duration, setDuration] = useState<Duration>('unlimited');
   const [frequency, setFrequency] = useState<Frequency>('daily');
   const [category, setCategory] = useState<Category>('personal');
+  const [priority, setPriority] = useState<Priority>('medium');
+  const [scheduledDays, setScheduledDays] = useState<number[]>([]);
+  const [monthDay, setMonthDay] = useState<number>(1);
+  const [time, setTime] = useState('');
+  const [toasts, setToasts] = useState<{ id: string; title: string; message: string }[]>([]);
+  const [notifiedIds, setNotifiedIds] = useState<Set<string>>(new Set());
+
+  // Deep Focus Timer state
+  const [focusActive, setFocusActive] = useState(false);
+  const [focusTime, setFocusTime] = useState(25 * 60); // 25 minutes
 
   // Load from local storage
   useEffect(() => {
@@ -48,10 +66,11 @@ function App() {
     const savedActivity = localStorage.getItem('activityData');
     if (savedHabits) {
       const parsed = JSON.parse(savedHabits);
-      // Backwards compatibility for habits without categories
+      // Backwards compatibility for habits without categories or priority
       const normalized = parsed.map((h: any) => ({
         ...h,
-        category: h.category || 'personal'
+        category: h.category || 'personal',
+        priority: h.priority || 'medium'
       }));
       setHabits(normalized);
     }
@@ -66,11 +85,11 @@ function App() {
 
   // Quotes Array
   const quotes = useMemo(() => [
-    "Small daily improvements are the key to staggering long-term results.",
-    "We are what we repeatedly do. Excellence is not an act, but a habit.",
-    "The secret of your future is hidden in your daily routine.",
-    "Success is the product of daily habits—not transformations.",
-    "Every action you take is a vote for the type of person you wish to become."
+    "Simplicity is the ultimate sophistication. Refine your intent.",
+    "The quality of your life is the quality of your focus and rituals.",
+    "Order is not a pressure, but a relief for the searching soul.",
+    "Discipline is the bridge between goals and accomplishment.",
+    "Silence the noise. Amplify the signal of your true aspirations."
   ], []);
   const todayQuote = useMemo(() => quotes[new Date().getDay() % quotes.length], [quotes]);
 
@@ -81,14 +100,25 @@ function App() {
     const newHabit: Habit = {
       id: crypto.randomUUID(),
       title,
-      duration,
       frequency,
       category,
+      priority,
+      scheduledDays: frequency === 'weekly' ? scheduledDays : undefined,
+      scheduledMonthDay: frequency === 'monthly' ? monthDay : undefined,
+      time: time || undefined,
       createdAt: new Date().toISOString()
     };
 
-    setHabits([newHabit, ...habits]);
+    const newHabits = [newHabit, ...habits];
+    setHabits(newHabits);
+    localStorage.setItem('habits', JSON.stringify(newHabits));
+
+    // Reset form
     setTitle('');
+    setPriority('medium');
+    setScheduledDays([]);
+    setMonthDay(1);
+    setTime('');
   };
 
   const deleteHabit = (habitId: string) => {
@@ -98,6 +128,41 @@ function App() {
   };
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+  // Time Reminder Logic
+  useEffect(() => {
+    const checkInterval = setInterval(() => {
+      const now = new Date();
+      const currentHrm = format(now, 'HH:mm');
+
+      habits.forEach(h => {
+        // If it's a "Today" task, has a time, is exactly that time, not notified yet, and not completed
+        const isToday = (h.frequency === 'daily') ||
+          (h.frequency === 'weekly' && h.scheduledDays?.includes(now.getDay())) ||
+          (h.frequency === 'monthly' && h.scheduledMonthDay === now.getDate());
+
+        if (isToday && h.time === currentHrm && !notifiedIds.has(h.id) && !activityData[todayStr]?.includes(h.id)) {
+          // Show Toast
+          const id = crypto.randomUUID();
+          setToasts(prev => [...prev, { id, title: h.title, message: `It's time to start your ritual: ${h.title}` }]);
+          setNotifiedIds(prev => new Set(prev).add(h.id));
+
+          // Audio cue could go here
+
+          // Auto remove toast
+          setTimeout(() => {
+            setToasts(prev => prev.filter(t => t.id !== id));
+          }, 8000);
+        }
+      });
+
+      // Cleanup notifies at midnight
+      if (currentHrm === '00:00') setNotifiedIds(new Set());
+
+    }, 1000 * 30); // check twice a minute
+
+    return () => clearInterval(checkInterval);
+  }, [habits, notifiedIds, activityData, todayStr]);
 
   const toggleHabit = (habitId: string) => {
     setActivityData(prev => {
@@ -116,15 +181,12 @@ function App() {
   };
 
   // Streak Calculation
-  const { currentStreak, maxStreak, totalCompletions } = useMemo(() => {
+  const { currentStreak, maxStreak } = useMemo(() => {
     let current = 0;
     let max = 0;
-    let total = 0;
 
     // To calculate proper max streak we should iterate through all recorded dates
     const datesWithActivity = Object.keys(activityData).filter(date => activityData[date] && activityData[date].length > 0).sort();
-
-    total = Object.values(activityData).reduce((acc, curr) => acc + curr.length, 0);
 
     // Compute simple max streak based on consecutive active days
     let tempStreak = 0;
@@ -178,8 +240,7 @@ function App() {
 
     return {
       currentStreak: current,
-      maxStreak: max,
-      totalCompletions: total
+      maxStreak: max
     };
   }, [activityData, todayStr]);
 
@@ -204,263 +265,218 @@ function App() {
     return weeks;
   }, []);
 
-  const getContributionColorClass = (count: number) => {
-    if (count === 0) return 'contrib-level-0';
-    if (count === 1) return 'contrib-level-1';
-    if (count === 2) return 'contrib-level-2';
-    if (count === 3) return 'contrib-level-3';
-    return 'contrib-level-4';
-  };
-
   const getCategoryIcon = (cat: Category, size = 16) => {
     switch (cat) {
-      case 'health': return <HeartPulse size={size} color="#ef4444" />;
-      case 'work': return <Briefcase size={size} color="#f59e0b" />;
-      case 'study': return <BookOpen size={size} color="#4f46e5" />;
-      case 'personal': default: return <User size={size} color="#818cf8" />;
+      case 'health': return <Activity size={size} color="var(--gold-accent)" />;
+      case 'work': return <Hexagon size={size} color="rgba(255,255,255,0.4)" />;
+      case 'study': return <BookOpen size={size} color="rgba(255,255,255,0.4)" />;
+      case 'personal': default: return <Circle size={size} color="rgba(255,255,255,0.4)" />;
     }
   };
 
-  const todayTotal = habits.length;
-  const todayCompletedCount = habits.filter(h => activityData[todayStr]?.includes(h.id)).length;
+  const todayWeekday = new Date().getDay();
+  const todayMonthDay = new Date().getDate();
+
+  const todayHabits = habits.filter(h => {
+    if (h.frequency === 'weekly' && h.scheduledDays && h.scheduledDays.length > 0) {
+      return h.scheduledDays.includes(todayWeekday);
+    }
+    if (h.frequency === 'monthly' && h.scheduledMonthDay) {
+      return h.scheduledMonthDay === todayMonthDay;
+    }
+    return true; // daily, once, etc.
+  }).sort((a, b) => {
+    if (!a.time && !b.time) return 0;
+    if (!a.time) return 1; // a without time comes after b with time
+    if (!b.time) return -1; // b without time comes after a with time
+    return a.time.localeCompare(b.time);
+  });
+
+
+
+  const todayTotal = todayHabits.length;
+  const todayCompletedCount = todayHabits.filter(h => activityData[todayStr]?.includes(h.id)).length;
   const progressPercent = todayTotal === 0 ? 0 : Math.round((todayCompletedCount / todayTotal) * 100);
-  const isAllDone = todayTotal > 0 && todayCompletedCount === todayTotal;
 
   return (
     <div className="app-container">
-      <header className="header" style={{ flexWrap: 'wrap', gap: '1rem' }}>
-        <div className="header-title-container">
-          <h1>Ritual Forge</h1>
-          <p className="header-subtitle">Build habits, forge your daily routine</p>
-        </div>
-        <div className="action">
-          <button className="btn btn-secondary">
-            <CalendarDays size={18} style={{ marginRight: '6px' }} />
-            Today: {format(new Date(), 'MMMM do, yyyy')}
-          </button>
+      <div className="ambient-glow"></div>
+
+      <header>
+        <h1>Ritual Forge</h1>
+        <p className="header-subtitle">CELESTIAL MINIMALIST // LEGACY ARCHIVE // {todayStr}</p>
+        <div style={{ marginTop: '5rem', fontSize: '1.4rem', fontStyle: 'italic', fontVariantCaps: 'all-small-caps', letterSpacing: '0.15em', fontWeight: 300, color: 'rgba(255,255,255,0.7)' }}>
+          "{todayQuote}"
         </div>
       </header>
 
-      <div className="quote-banner">
-        <Quote size={20} className="quote-icon" />
-        <p>{todayQuote}</p>
-      </div>
-
       <section className="stats-grid">
         <div className="stat-card">
-          <div className="stat-icon fire">
-            <Flame size={28} />
-          </div>
-          <div className="stat-info">
-            <span className="stat-value">{currentStreak}</span>
-            <span className="stat-label">Day Streak</span>
-          </div>
+          <span className="stat-value">{currentStreak}</span>
+          <span className="stat-label">CONTINUITY</span>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon trophy">
-            <Trophy size={28} />
-          </div>
-          <div className="stat-info">
-            <span className="stat-value">{maxStreak}</span>
-            <span className="stat-label">Best Streak</span>
-          </div>
+          <span className="stat-value">{progressPercent}%</span>
+          <span className="stat-label">CLARITY</span>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon" style={{ color: 'var(--accent)' }}>
-            <Target size={28} />
-          </div>
-          <div className="stat-info">
-            <span className="stat-value">{totalCompletions}</span>
-            <span className="stat-label">Total Contributions</span>
-          </div>
+          <span className="stat-value">{maxStreak}</span>
+          <span className="stat-label">LEGACY RECORD</span>
+        </div>
+
+        <div className="stat-card">
+          <span className="stat-value">{habits.length}</span>
+          <span className="stat-label">SET INTENTIONS</span>
         </div>
       </section>
 
       <div className="main-content">
-        <div className="left-column" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <div className="panel">
+          <h2 className="panel-title">THESE ARE YOUR INTENTIONS TODAY</h2>
 
-          <div className="panel">
-            <h2 className="panel-title">
-              <Target size={24} color="var(--accent)" />
-              Activity Board
-            </h2>
-            <div className="contribution-graph-wrapper">
-              <div className="contribution-graph">
-                {graphWeeks.map((week, wIndex) => (
-                  <div key={wIndex} className="contribution-col">
-                    {wIndex === 0 && week.length < 7 && Array.from({ length: 7 - week.length }).map((_, i) => (
-                      <div key={`empty-${i}`} style={{ width: 12, height: 12 }}></div>
-                    ))}
-                    {week.map(day => {
-                      const dateStr = format(day, 'yyyy-MM-dd');
-                      const completions = activityData[dateStr]?.length || 0;
-                      return (
-                        <div
-                          key={dateStr}
-                          className={`contribution-cell ${getContributionColorClass(completions)}`}
-                        >
-                          <div className="tooltip">
-                            {completions} {completions === 1 ? 'task' : 'tasks'} on {format(day, 'MMM d, yyyy')}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
+          <div className="habit-list">
+            {todayHabits.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '10rem 0', opacity: 0.2 }}>
+                <Wind size={48} strokeWidth={1} style={{ marginBottom: '2rem' }} />
+                <p style={{ letterSpacing: '0.2em', fontSize: '0.75rem', textTransform: 'uppercase' }}>A moment of stillness. No intentions remain.</p>
               </div>
-            </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'right', marginTop: '0.5rem' }}>
-              Less
-              <span style={{ display: 'inline-block', width: 12, height: 12, background: 'var(--contrib-level-0)', margin: '0 4px', borderRadius: 2 }}></span>
-              <span style={{ display: 'inline-block', width: 12, height: 12, background: 'var(--contrib-level-1)', margin: '0 4px', borderRadius: 2 }}></span>
-              <span style={{ display: 'inline-block', width: 12, height: 12, background: 'var(--contrib-level-2)', margin: '0 4px', borderRadius: 2 }}></span>
-              <span style={{ display: 'inline-block', width: 12, height: 12, background: 'var(--contrib-level-3)', margin: '0 4px', borderRadius: 2 }}></span>
-              <span style={{ display: 'inline-block', width: 12, height: 12, background: 'var(--contrib-level-4)', margin: '0 4px', borderRadius: 2 }}></span>
-              More
-            </p>
-          </div>
-
-          <div className="panel" style={{ position: 'relative', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <h2 className="panel-title" style={{ marginBottom: 0 }}>
-                <ListTodo size={24} color="var(--accent)" />
-                Today's Tasks
-              </h2>
-              {todayTotal > 0 && (
-                <span className="badge" style={{ background: isAllDone ? 'var(--success)' : 'var(--accent)', color: 'white', fontWeight: 'bold', display: 'flex', gap: '4px', alignItems: 'center' }}>
-                  {isAllDone && <Sparkles size={14} />} {progressPercent}% Done
-                </span>
-              )}
-            </div>
-
-            {todayTotal > 0 && (
-              <div className="progress-bar-container">
-                <div className="progress-bar-fill" style={{ width: `${progressPercent}%`, background: isAllDone ? 'var(--success)' : 'var(--accent-gradient)' }}></div>
-              </div>
-            )}
-
-            <div className="habit-list">
-              {habits.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>
-                  No tasks added yet. Create one to get started!
-                </p>
-              ) : (
-                habits.map(habit => {
-                  const isCompletedToday = activityData[todayStr]?.includes(habit.id);
-                  return (
-                    <div key={habit.id} className="habit-card">
-                      <div className="habit-info">
-                        <span className="habit-title" style={{
-                          textDecoration: isCompletedToday ? 'line-through' : 'none',
-                          color: isCompletedToday ? 'var(--text-muted)' : 'var(--text-primary)'
-                        }}>
-                          {habit.title}
-                        </span>
-                        <div className="habit-meta">
-                          <span className="badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {getCategoryIcon(habit.category, 12)}
-                            {habit.category.charAt(0).toUpperCase() + habit.category.slice(1)}
-                          </span>
-                          <span className="badge">{habit.duration.replace('_', ' ')}</span>
-                          <span className="badge" style={{ textTransform: 'capitalize' }}>{habit.frequency.replace('_', ' ')}</span>
-                        </div>
+            ) : (
+              todayHabits.map(habit => {
+                const isCompletedToday = activityData[todayStr]?.includes(habit.id);
+                return (
+                  <div key={habit.id} className="habit-card" style={{ opacity: isCompletedToday ? 0.3 : 1 }}>
+                    <div className="habit-info">
+                      <div className="habit-title" style={{ textDecoration: isCompletedToday ? 'none' : 'none' }}>
+                        {habit.title}
                       </div>
-                      <div className="habit-actions">
-                        <button
-                          className="delete-btn"
-                          onClick={() => deleteHabit(habit.id)}
-                          title="Delete Task completely"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                        <button
-                          onClick={() => toggleHabit(habit.id)}
-                          className={`check-button ${isCompletedToday ? 'completed' : ''}`}
-                        >
-                          <CheckCircle2 size={24} />
-                        </button>
+                      <div className="habit-meta">
+                        <span style={{ display: 'flex', alignItems: 'center' }}>
+                          <span className={`priority-indicator priority-${habit.priority}`}></span>
+                          {habit.priority}
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {getCategoryIcon(habit.category, 14)}
+                          {habit.category}
+                        </span>
+                        {habit.time && (
+                          <span style={{ color: 'var(--gold-accent)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Clock size={12} />
+                            {habit.time}
+                          </span>
+                        )}
                       </div>
                     </div>
-                  )
-                })
-              )}
-            </div>
-          </div>
 
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2.5rem' }}>
+                      <button
+                        onClick={() => deleteHabit(habit.id)}
+                        style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.05)', cursor: 'pointer', transition: '0.3s' }}
+                      >
+                        <Archive size={18} />
+                      </button>
+                      <button
+                        onClick={() => toggleHabit(habit.id)}
+                        className={`check-button ${isCompletedToday ? 'completed' : ''}`}
+                      >
+                        {isCompletedToday ? <Plus size={20} style={{ transform: 'rotate(45deg)' }} /> : <Plus size={20} />}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
 
         <div className="right-column">
-          <div className="panel">
-            <h2 className="panel-title" style={{ fontSize: '1.2rem' }}>
-              <Plus size={20} />
-              Add New Task
-            </h2>
+          <div className="panel" style={{ borderLeft: '1px solid var(--glass-border)', paddingLeft: '4rem' }}>
+            <h2 className="panel-title">SEAL NEW INTENT</h2>
             <form onSubmit={handleAddHabit}>
               <div className="form-group">
-                <label>Task Title</label>
                 <input
                   type="text"
                   value={title}
                   onChange={e => setTitle(e.target.value)}
-                  placeholder="e.g. Study for one hour..."
+                  placeholder="EXPRESS INTENT..."
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label>Category</label>
-                <div className="category-selector">
-                  {(['personal', 'work', 'health', 'study'] as Category[]).map(c => (
-                    <label key={c} className={`category-radio ${category === c ? 'active' : ''}`}>
-                      <input
-                        type="radio"
-                        name="category"
-                        value={c}
-                        checked={category === c}
-                        onChange={() => setCategory(c)}
-                        style={{ display: 'none' }}
-                      />
-                      {getCategoryIcon(c, 16)}
-                      <span>{c.charAt(0).toUpperCase() + c.slice(1)}</span>
-                    </label>
-                  ))}
-                </div>
+                <select value={category} onChange={e => setCategory(e.target.value as Category)}>
+                  <option value="personal">PERSONAL DOMAIN</option>
+                  <option value="work">PROFESSIONAL FOCUS</option>
+                  <option value="health">VITALITY</option>
+                  <option value="study">ACADEMIC MASTERY</option>
+                </select>
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Duration</label>
-                  <select value={duration} onChange={e => setDuration(e.target.value as Duration)}>
-                    <option value="1_day">1 Day</option>
-                    <option value="3_days">3 Days</option>
-                    <option value="7_days">7 Days</option>
-                    <option value="1_month">1 Month</option>
-                    <option value="1_year">1 Year</option>
-                    <option value="unlimited">Unlimited</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Frequency</label>
-                  <select value={frequency} onChange={e => setFrequency(e.target.value as Frequency)}>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="once">One Time</option>
-                  </select>
-                </div>
+              <div className="form-group">
+                <select value={priority} onChange={e => setPriority(e.target.value as Priority)}>
+                  <option value="high">ABSOLUTE (HIGH)</option>
+                  <option value="medium">ESSENTIAL (MID)</option>
+                  <option value="low">MINOR (LOW)</option>
+                </select>
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
-                <Plus size={18} />
-                Add Task
+              <button type="submit" className="btn-primary">
+                COMMIT INTENTION
               </button>
             </form>
+
+            <div style={{ marginTop: '8rem', borderTop: '1px solid var(--glass-border)', paddingTop: '4rem' }}>
+              <h3 style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.3em', marginBottom: '2rem', color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Clock size={14} /> DEEP FOCUS SESSION
+              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                <div style={{ fontSize: '2.5rem', fontFamily: 'Instrument Serif', fontStyle: 'italic', fontWeight: 300 }}>
+                  25:00
+                </div>
+                <button
+                  style={{ background: 'none', border: 'none', color: 'var(--gold-accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.2em' }}
+                >
+                  <Play size={14} fill="var(--gold-accent)" /> INITIATE FOCUS
+                </button>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '8rem' }}>
+              <h2 className="panel-title" style={{ fontSize: '1.1rem', marginBottom: '2rem', border: 'none' }}>LEGACY CHART</h2>
+              <div className="contribution-graph">
+                {graphWeeks.slice(-10).map((week, weekIdx) => (
+                  <div key={weekIdx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {week.map(day => {
+                      const dateStr = format(day, 'yyyy-MM-dd');
+                      const count = activityData[dateStr]?.length || 0;
+                      const level = count === 0 ? 0 : (count < 2 ? 1 : (count < 4 ? 2 : (count < 6 ? 3 : 4)));
+                      return (
+                        <div
+                          key={dateStr}
+                          className={`contribution-cell contrib-level-${level}`}
+                          title={`${format(day, 'MMM do')}: ${count} intents confirmed`}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {toasts.length > 0 && (
+        <div className="toast-container" style={{ position: 'fixed', zIndex: 9999 }}>
+          {toasts.map(t => (
+            <div key={t.id} className="toast">
+              <h4 style={{ fontFamily: 'Instrument Serif', fontSize: '1.4rem', fontWeight: 400, fontStyle: 'italic', marginBottom: '0.5rem' }}>A Reminder to Act</h4>
+              <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.15em', opacity: 0.6 }}>{t.title}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

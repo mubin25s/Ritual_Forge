@@ -4,9 +4,10 @@ export type Frequency = 'daily' | 'weekly' | 'monthly' | 'once';
 export interface Habit {
     id: string;
     title: string;
-    duration: Duration;
     frequency: Frequency;
     createdAt: string; // ISO string Date
+    scheduledDays?: number[]; // Array of 0-6 indicating scheduled days for weekly tasks
+    scheduledMonthDay?: number; // 1-31 for monthly tasks
 }
 
 export interface ActivityDate {
