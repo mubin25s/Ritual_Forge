@@ -6,18 +6,27 @@ import {
   Plus,
   CalendarDays,
   Target,
-  ListTodo
+  ListTodo,
+  Trash2,
+  Briefcase,
+  HeartPulse,
+  BookOpen,
+  User,
+  Quote,
+  Sparkles
 } from 'lucide-react';
 import { format, subDays, eachDayOfInterval, startOfWeek, subWeeks, parseISO } from 'date-fns';
 
 type Duration = '1_day' | '3_days' | '7_days' | '1_month' | '1_year' | 'unlimited';
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'once';
+type Category = 'health' | 'work' | 'personal' | 'study';
 
 interface Habit {
   id: string;
   title: string;
   duration: Duration;
   frequency: Frequency;
+  category: Category;
   createdAt: string; // ISO DateTime
 }
 
@@ -31,12 +40,21 @@ function App() {
   const [title, setTitle] = useState('');
   const [duration, setDuration] = useState<Duration>('unlimited');
   const [frequency, setFrequency] = useState<Frequency>('daily');
+  const [category, setCategory] = useState<Category>('personal');
 
   // Load from local storage
   useEffect(() => {
     const savedHabits = localStorage.getItem('habits');
     const savedActivity = localStorage.getItem('activityData');
-    if (savedHabits) setHabits(JSON.parse(savedHabits));
+    if (savedHabits) {
+      const parsed = JSON.parse(savedHabits);
+      // Backwards compatibility for habits without categories
+      const normalized = parsed.map((h: any) => ({
+        ...h,
+        category: h.category || 'personal'
+      }));
+      setHabits(normalized);
+    }
     if (savedActivity) setActivityData(JSON.parse(savedActivity));
   }, []);
 
@@ -45,6 +63,16 @@ function App() {
     localStorage.setItem('habits', JSON.stringify(habits));
     localStorage.setItem('activityData', JSON.stringify(activityData));
   }, [habits, activityData]);
+
+  // Quotes Array
+  const quotes = useMemo(() => [
+    "Small daily improvements are the key to staggering long-term results.",
+    "We are what we repeatedly do. Excellence is not an act, but a habit.",
+    "The secret of your future is hidden in your daily routine.",
+    "Success is the product of daily habits—not transformations.",
+    "Every action you take is a vote for the type of person you wish to become."
+  ], []);
+  const todayQuote = useMemo(() => quotes[new Date().getDay() % quotes.length], [quotes]);
 
   const handleAddHabit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,11 +83,18 @@ function App() {
       title,
       duration,
       frequency,
+      category,
       createdAt: new Date().toISOString()
     };
 
     setHabits([newHabit, ...habits]);
     setTitle('');
+  };
+
+  const deleteHabit = (habitId: string) => {
+    if (window.confirm("Are you sure you want to delete this task completely?")) {
+      setHabits(prev => prev.filter(h => h.id !== habitId));
+    }
   };
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -85,9 +120,6 @@ function App() {
     let current = 0;
     let max = 0;
     let total = 0;
-
-    // Calculate completions and streaks
-    const todayHits = activityData[todayStr]?.length || 0;
 
     // To calculate proper max streak we should iterate through all recorded dates
     const datesWithActivity = Object.keys(activityData).filter(date => activityData[date] && activityData[date].length > 0).sort();
@@ -147,8 +179,7 @@ function App() {
     return {
       currentStreak: current,
       maxStreak: max,
-      totalCompletions: total,
-      todayCompletions: todayHits
+      totalCompletions: total
     };
   }, [activityData, todayStr]);
 
@@ -181,9 +212,23 @@ function App() {
     return 'contrib-level-4';
   };
 
+  const getCategoryIcon = (cat: Category, size = 16) => {
+    switch (cat) {
+      case 'health': return <HeartPulse size={size} color="#ef4444" />;
+      case 'work': return <Briefcase size={size} color="#f59e0b" />;
+      case 'study': return <BookOpen size={size} color="#4f46e5" />;
+      case 'personal': default: return <User size={size} color="#818cf8" />;
+    }
+  };
+
+  const todayTotal = habits.length;
+  const todayCompletedCount = habits.filter(h => activityData[todayStr]?.includes(h.id)).length;
+  const progressPercent = todayTotal === 0 ? 0 : Math.round((todayCompletedCount / todayTotal) * 100);
+  const isAllDone = todayTotal > 0 && todayCompletedCount === todayTotal;
+
   return (
     <div className="app-container">
-      <header className="header">
+      <header className="header" style={{ flexWrap: 'wrap', gap: '1rem' }}>
         <div className="header-title-container">
           <h1>Ritual Forge</h1>
           <p className="header-subtitle">Build habits, forge your daily routine</p>
@@ -195,6 +240,11 @@ function App() {
           </button>
         </div>
       </header>
+
+      <div className="quote-banner">
+        <Quote size={20} className="quote-icon" />
+        <p>{todayQuote}</p>
+      </div>
 
       <section className="stats-grid">
         <div className="stat-card">
@@ -240,7 +290,6 @@ function App() {
               <div className="contribution-graph">
                 {graphWeeks.map((week, wIndex) => (
                   <div key={wIndex} className="contribution-col">
-                    {/* Optional padding if the first week doesn't start on Sunday */}
                     {wIndex === 0 && week.length < 7 && Array.from({ length: 7 - week.length }).map((_, i) => (
                       <div key={`empty-${i}`} style={{ width: 12, height: 12 }}></div>
                     ))}
@@ -262,7 +311,7 @@ function App() {
                 ))}
               </div>
             </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'right', marginTop: '0.5rem' }}>
               Less
               <span style={{ display: 'inline-block', width: 12, height: 12, background: 'var(--contrib-level-0)', margin: '0 4px', borderRadius: 2 }}></span>
               <span style={{ display: 'inline-block', width: 12, height: 12, background: 'var(--contrib-level-1)', margin: '0 4px', borderRadius: 2 }}></span>
@@ -273,11 +322,25 @@ function App() {
             </p>
           </div>
 
-          <div className="panel">
-            <h2 className="panel-title">
-              <ListTodo size={24} color="var(--accent)" />
-              Today's Tasks & Habits
-            </h2>
+          <div className="panel" style={{ position: 'relative', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <h2 className="panel-title" style={{ marginBottom: 0 }}>
+                <ListTodo size={24} color="var(--accent)" />
+                Today's Tasks
+              </h2>
+              {todayTotal > 0 && (
+                <span className="badge" style={{ background: isAllDone ? 'var(--success)' : 'var(--accent)', color: 'white', fontWeight: 'bold', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  {isAllDone && <Sparkles size={14} />} {progressPercent}% Done
+                </span>
+              )}
+            </div>
+
+            {todayTotal > 0 && (
+              <div className="progress-bar-container">
+                <div className="progress-bar-fill" style={{ width: `${progressPercent}%`, background: isAllDone ? 'var(--success)' : 'var(--accent-gradient)' }}></div>
+              </div>
+            )}
+
             <div className="habit-list">
               {habits.length === 0 ? (
                 <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>
@@ -296,16 +359,29 @@ function App() {
                           {habit.title}
                         </span>
                         <div className="habit-meta">
+                          <span className="badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {getCategoryIcon(habit.category, 12)}
+                            {habit.category.charAt(0).toUpperCase() + habit.category.slice(1)}
+                          </span>
                           <span className="badge">{habit.duration.replace('_', ' ')}</span>
-                          <span className="badge">{habit.frequency}</span>
+                          <span className="badge" style={{ textTransform: 'capitalize' }}>{habit.frequency.replace('_', ' ')}</span>
                         </div>
                       </div>
-                      <button
-                        onClick={() => toggleHabit(habit.id)}
-                        className={`check-button ${isCompletedToday ? 'completed' : ''}`}
-                      >
-                        <CheckCircle2 size={24} />
-                      </button>
+                      <div className="habit-actions">
+                        <button
+                          className="delete-btn"
+                          onClick={() => deleteHabit(habit.id)}
+                          title="Delete Task completely"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                        <button
+                          onClick={() => toggleHabit(habit.id)}
+                          className={`check-button ${isCompletedToday ? 'completed' : ''}`}
+                        >
+                          <CheckCircle2 size={24} />
+                        </button>
+                      </div>
                     </div>
                   )
                 })
@@ -334,25 +410,47 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label>Duration</label>
-                <select value={duration} onChange={e => setDuration(e.target.value as Duration)}>
-                  <option value="1_day">1 Day</option>
-                  <option value="3_days">3 Days</option>
-                  <option value="7_days">7 Days</option>
-                  <option value="1_month">1 Month</option>
-                  <option value="1_year">1 Year</option>
-                  <option value="unlimited">Unlimited (Life)</option>
-                </select>
+                <label>Category</label>
+                <div className="category-selector">
+                  {(['personal', 'work', 'health', 'study'] as Category[]).map(c => (
+                    <label key={c} className={`category-radio ${category === c ? 'active' : ''}`}>
+                      <input
+                        type="radio"
+                        name="category"
+                        value={c}
+                        checked={category === c}
+                        onChange={() => setCategory(c)}
+                        style={{ display: 'none' }}
+                      />
+                      {getCategoryIcon(c, 16)}
+                      <span>{c.charAt(0).toUpperCase() + c.slice(1)}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
-              <div className="form-group">
-                <label>Reminder / Frequency</label>
-                <select value={frequency} onChange={e => setFrequency(e.target.value as Frequency)}>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="once">One Time</option>
-                </select>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Duration</label>
+                  <select value={duration} onChange={e => setDuration(e.target.value as Duration)}>
+                    <option value="1_day">1 Day</option>
+                    <option value="3_days">3 Days</option>
+                    <option value="7_days">7 Days</option>
+                    <option value="1_month">1 Month</option>
+                    <option value="1_year">1 Year</option>
+                    <option value="unlimited">Unlimited</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Frequency</label>
+                  <select value={frequency} onChange={e => setFrequency(e.target.value as Frequency)}>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="once">One Time</option>
+                  </select>
+                </div>
               </div>
 
               <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>

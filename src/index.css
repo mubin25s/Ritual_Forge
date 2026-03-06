@@ -378,3 +378,83 @@ input:focus, select:focus, textarea:focus {
   color: white;
   transform: scale(1.05);
 }
+
+/* New Features Styles */
+.quote-banner {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  box-shadow: var(--shadow);
+}
+.quote-icon {
+  color: var(--accent);
+  opacity: 0.7;
+}
+
+.progress-bar-container {
+  height: 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent-gradient);
+  border-radius: var(--radius-full);
+  transition: width 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s ease;
+}
+
+.habit-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.delete-btn {
+  color: var(--text-muted);
+  padding: 0.5rem;
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
+.category-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.category-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg-tertiary);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+.category-radio:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+.category-radio.active {
+  border-color: var(--accent);
+  background: rgba(79, 70, 229, 0.1);
+  color: var(--text-primary);
+}
