@@ -1,73 +1,66 @@
-# Task Manager - Comprehensive Project Documentation
+# Ritual Forge - Comprehensive Project Documentation
 
-## Project Overview
-Task Manager is a modern, high-performance web application designed to help users organize their daily activities, manage priorities, and track productivity. The project was conceived as a solution for individuals seeking a clean, intuitive, and distraction-free environment to manage their personal and professional workflows. 
+## 1. Project Overview
+Ritual Forge (formerly Task Manager) is a sophisticated React-based web application designed to help users organize daily activities, establish meaningful habits, and forge productive routines. The project bridges the gap between basic to-do lists and complex habit trackers by providing a powerhouse of features wrapped in a minimalist, premium design.
 
-The primary goal of this project is to bridge the gap between simple to-do lists and complex project management suites by providing a powerhouse of features wrapped in a minimalist, premium design.
+The primary goal of Ritual Forge is to cultivate consistency through visual motivation, categorization, and easy-to-read progress tracking.
 
-## Why This Project Was Made
-In an age of information overload, staying organized is more critical than ever. This project was developed to provide:
-- **Efficiency:** Streamlined task entry and status tracking to minimize time spent on management and maximize time spent on execution.
-- **Visual Clarity:** A dashboard that provides immediate insights into workload through real-time statistics.
-- **Accessibility:** A fully responsive web interface that works seamlessly across desktops, tablets, and mobile devices.
-- **Privacy & Persistence:** A client-side first approach using local storage to ensure data remains private while persisting across browser sessions.
+## 2. Why This Project Was Upgraded
+In an age of information overload, staying organized needs to feel rewarding. Simple lists are often abandoned. The project was upgraded from a basic HTML/CSS task manager to a React application to provide:
+- **Visual Motivation:** A GitHub-style contribution graph and daily progress bars to encourage consistent daily activity.
+- **Enhanced Organization:** Adding categorized tasks (Work, Health, Personal, Study) tailored for modern lifestyles.
+- **Extensibility:** Using React and TypeScript allows the app to cleanly manage complex states (streaks, daily data mapped to ISO dates, etc.) making it easy to scale or add a backend later.
+- **Privacy & Persistence:** Continued focus on a client-side first approach using Local Storage to ensure data remains completely private while persisting across browser sessions.
 
-## Core Features and Functionalities
+## 3. Core Features and Functionalities
 
-### 📊 Real-Time Dashboard
-The application features a dynamic statistics section that updates instantly as tasks are added, completed, or removed. This provides a high-level overview of:
-- Total number of tasks.
-- Completed task count.
-- Pending task count.
-- High-priority tasks requiring immediate attention.
+### 📊 Real-Time Dashboard & Statistics
+The top of the application features a dynamic statistics section outlining long-term progress:
+- **Day Streak (Current Streak):** Calculates consecutive days the user has completed at least one task.
+- **Best Streak:** Parses historical data to find the longest uninterrupted streak of productivity.
+- **Total Contributions:** Aggregate numbers of all completed tasks over the app's lifetime.
 
-### 📝 Advanced Task Management
-Users can create detailed tasks with the following attributes:
-- **Title:** Primary identifier for the task.
-- **Description:** Detailed context or sub-steps for the task.
-- **Priority Levels:** Color-coded categories (🔴 High, 🟡 Medium, 🟢 Low) for effective triage.
-- **Due Dates:** Scheduled deadlines with visual indicators for overdue items.
+### 📝 Advanced Task & Habit Management
+Users can create detailed habits/tasks with the following attributes:
+- **Title:** Primary identifier.
+- **Category:** Categorical grouping (`Personal`, `Work`, `Health`, `Study`) complete with contextual SVG icons.
+- **Duration & Frequency:** Specify how long the habit should be tracked and how often it occurs.
+- **Progress Tracking:**
+  - A responsive Progress Bar dynamically calculates the `(Completed Today / Total Today) * 100` percentage.
+  - Completed items receive a strikethrough and visual dulling.
+  - Tasks can be toggled completely or permanently deleted via the Trash action.
 
-### 🔍 Intelligent Filtering & Search
-To handle large volumes of tasks, the application provides robust organizational tools:
-- **Status Filtering:** Toggle between All, Pending, and Completed tasks.
-- **Priority Filtering:** Narrow down tasks based on their urgency.
-- **Live Search:** Instant fuzzy searching across titles and descriptions.
+### 💡 Motivational Quotes
+To maintain user engagement, the app presents a daily rotating motivational quote based on the current day of the week, displayed in a dedicated quote banner.
 
-### 🌓 Dynamic Theming
-A flagship feature of the application is its seamless Light and Dark mode transition. The interface utilizes CSS custom properties to switch between themes without a page reload, saving user preferences automatically.
+### 📈 GitHub-Style Activity Board
+A 52-week contribution heatmap forms the centerpiece of the application. 
+- It processes an `ActivityData` map to determine how many tasks were completed on every calendar date over the past year.
+- Outputs a color-coded matrix, where deeper colors indicate higher productivity.
 
-### 🔔 User Feedback System
-A custom Toast notification system provides non-intrusive, colored-coded alerts for every action—confirming task creation, completion, deletion, and theme changes.
-
-## Tools and Techniques
+## 4. Tools and Techniques
 
 ### Frontend Architecture
-- **HTML5:** Semantic markup ensures high accessibility (a11y) and SEO optimization.
-- **CSS3 (Vanilla):** Modern styling techniques including Flexbox for layouts, CSS Grid for the dashboard, and custom variables for theme management. Transitions and animations are used to provide the "premium" feel.
-- **JavaScript (ES6+):** The application logic is built using a Class-based architecture (`TaskManager` class) to ensure code reusability and maintainability.
+- **Framework:** React 19 optimized via Vite for lightning-fast Hot Module Replacement (HMR) and production builds.
+- **Language:** TypeScript for strict type-checking, preventing runtime errors by structuring defined `Habit`, `Duration`, `Frequency`, and `Category` interfaces.
+- **Styling:** Modular CSS architecture heavily utilizing CSS custom parameters (Variables) for theming, CSS Grid for the Activity Board, and Flexbox for component layout. 
+- **Date Management:** Integration of `date-fns` to reliably compute intervals, week starts, and streak diffs without the unreliability of native Date math.
+- **Icons:** `lucide-react` is used for crisp, scalable, and responsive application iconography.
 
 ### Data Management
-- **Local Storage API:** Used for browser-level data persistence. This removes the need for a backend database while maintaining the user's data between sessions.
-- **JSON Serialization:** Efficient handling of complex task objects for storage and retrieval.
+- **Local Storage System:** Used for browser-level data persistence. It intercepts state changes in `habits` and `activityData` through a `useEffect` hook and silently serializes the JSON to the browser storage.
+- **Matrix Mapping (Activity Data):** Uses a dictionary-based architecture (`Record<string, string[]>`) matching `"YYYY-MM-DD"` strings to arrays of checked `habitIDs`, creating a highly efficient O(1) lookup schema.
 
-### Performance Techniques
-- **Event Delegation:** Efficiently managing events for dynamically generated task cards.
-- **DOM Optimization:** Minimizing reflows and repaints by targeted innerHTML updates and class toggling.
-- **Responsive Design:** Using media queries and fluid layouts to ensure a consistent experience across all screen sizes.
+## 5. Design Philosophy
+The UI follows modern, premium UX principles:
+- **Glossy / Modern Aesthetic:** Gradients spanning the progress bars, clean borders, and soft layered box-shadows yield a high-quality application form.
+- **Color Theory:** Categories have assigned emotional color profiles (e.g., Red for Health, Amber for Work, Indigo for Study). 
+- **Micro-interactions:** Smooth hover effects across the Activity graph cells (with tooltips) and interactive Task cards ensuring the application feels alive. 
 
-## Design Philosophy
-The design follows modern UI/UX principles:
-- **Glassmorphism:** Subtle background blurs and shadows for depth.
-- **Micro-interactions:** Smooth hover effects and button transitions to make the app feel alive.
-- **Typography:** Using high-readability sans-serif fonts with clear hierarchy.
-- **Color Theory:** A harmonious palette that provides high contrast for accessibility while maintaining a professional aesthetic.
+## 6. Technical Implementation Insights
+The `App.tsx` handles the core monolithic state logic:
+1. **Memoization:** Extracts heavy operations like `currentStreak`, `graphWeeks`, and `quotes` array into `useMemo` to prevent unnecessary computationally expensive re-calculations on standard renders.
+2. **Backwards Compatibility Migration:** During the local storage parse phase (`useEffect`), it intelligently identifies old data models that might lack the new `Category` attributes and normalizes them defaults, preventing application crashes.
 
-## Technical Implementation Details
-The project utilizes a single-entry point script (`script.js`) that initializes the `TaskManager` class upon `DOMContentLoaded`. The class manages:
-1.  **State Management:** Maintaining a single source of truth for all tasks.
-2.  **Rendering Engine:** Dynamically building HTML strings for task cards with built-in XSS protection through HTML escaping.
-3.  **Utility Functions:** Handling date formatting, theme persistence, and toast lifecycle.
-
-## Conclusion
-Task Manager stands as a testament to the power of modern web technologies. By combining vanilla web standards with thoughtful design and robust logic, the application provides a professional-grade tool that is both lightweight and feature-complete.
+## 7. Conclusion
+Ritual Forge stands as a robust upgrade demonstrating competency with Modern React, complex date manipulation, and high-fidelity interface design. It serves as a beautiful, functional tool for personal discipline that lives directly and privately in the user's browser.
